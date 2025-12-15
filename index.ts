@@ -1,70 +1,55 @@
 import { chromium, devices, Page } from 'playwright';  // Or 'chromium' or 'webkit'.
-import { format } from "util";
-import pptxgen from "pptxgenjs";
-import PDFDocument  from "pdfkit";
-import format from '@stdlib/string-format'
-const { setImmediate: setImmediatePromise } = require('node:timers/promises');
-import fs from "fs";
+import pptxgen from 'pptxgenjs';
+import PDFDocument from 'pdfkit';
+import format = require("@stdlib/string-format");
+// import _ as format from "@stdlib/string-format";
+import * as fs from 'fs';
 import { Command } from 'commander';
-
-async function sleep(seconds) {
-  return new Promise((resolve) =>setTimeout(resolve, seconds * 1000));
-}
-
-
 import rehypeParse from 'rehype-parse';
 import rehypeRemark from 'rehype-remark';
 import remarkStringify from 'remark-stringify';
-import {unified} from 'unified'
+import { unified } from 'unified'
 
-
-// slide.addNotes('This is my favorite slide!');
-
-// let pres = new pptxgen();
-// let slide = pres.addSlide();
-
-class SpeakerNotes {
-  markdown: String | null= null
-  html: String | null = null
+async function sleep(seconds: number) {
+  return new Promise((resolve) =>setTimeout(resolve, seconds * 1000));
 }
 
-class PageLink {
-  text: String = ""
-  href: String = ""
-  x: Number = 0
-  y: Number = 0
-  l: Number = 0
-  t: Number = 0
-  w: Number = 0
-  h: Number = 0
+interface SpeakerNotes {
+  markdown?: string
+  html?: string
 }
 
-class PagePile {
+interface PageLink {
+  text: string
+  href: string
+  x: number
+  y: number
+  l: number
+  t: number
+  w: number
+  h: number
+}
+
+interface PagePile {
   speakerNotes: SpeakerNotes
-  screenshots: String[] = []
-  links:PageLink[] = []
-
-  constructor() {
-    this.screenshots = []
-    this.speakerNotes = new SpeakerNotes();
-  }
+  screenshots: string[]
+  links: PageLink[]
 }
 
+export class RevealPager {
 
-class RevealPager {
-
-  currentPile: PagePile;
-  dump: PagePile[];
-  page: Page;
-  screenshotCounter: number = 1;
+  private currentPile!: PagePile;
+  private dump!: PagePile[];
+  private page: Page;
+  private screenshotCounter: number = 1;
 
   constructor(page: Page) {
     this.page = page;
+    this.currentPile = this.getCleanPagePile();
     this.dump = [];
-    this.currentPile = this.getClearPile();
   }
 
-  public async convert(html: Compatible) {
+  public async convert(html: string) {
     const rehype = unified()
       .use(rehypeParse)
       .use(rehypeRemark)
@@ -83,12 +68,16 @@ class RevealPager {
     return filename;
   }
 
-  private getClearPile(): PagePile {
-    return new PagePile();
+  private getCleanPagePile(): PagePile {
+    return {
+      screenshots: [],
+      speakerNotes: {},
+      links: []
+    }
   }
 
   private clearCurrentPile() {
-    this.currentPile = this.getClearPile();
+    this.currentPile = this.getCleanPagePile()
   }
 
   public async next() {
@@ -126,7 +115,7 @@ class RevealPager {
     }
 
     this.currentPile.links =  await this.page.evaluate(`window.getLinkElements()`);
-    console.dir(this.currentPile.links);
+    console.info(`Got links: ${JSON.stringify(this.currentPile.links, null, 2)}`);
 
     const slideNotesHtml: string = await this.page.evaluate(`Reveal.getSlideNotes()`);
     this.currentPile.speakerNotes.html = slideNotesHtml;
@@ -185,7 +174,7 @@ class App {
       .argument('[string]', 'PDF Filename')
       .option('-f, --filename <string>', 'Path to stagecraft file or export directory')
       .action(() => {
-        this.generatePdf();
+        this.generatePdf('example.pdf');
       });
 
     this.commanderApp.command('generate-pptx')
@@ -209,7 +198,7 @@ class App {
       for (let filename of pagepile.screenshots) {
         console.info(`Adding ${filename}`);
         let slide = pres.addSlide();
-        slide.background = { path: filename };  
+        slide.background = { "path": filename };  
         // slide.addImage({ path: "screenshot-0001.png", w: '100%', h:'100%' }); 
         if (notes) {
           slide.addNotes(notes);
@@ -289,24 +278,10 @@ class App {
         for (let link of pagepile.links) {
           if (link.l>0 && link.t>0) {
             console.log(`Adding Link for ${link.text}: ${link.href} (${link.l},${link.t}:${link.w}x${link.h})`);
-            // doc.rect(link.l,link.t, link.w, link.h, {"link": link.href}).fill('black');
-            /*doc.fillColor('green').text(link.text,link.l,link.t, {
-              width: link.w, 
-              height: link.h,
-              align: 'left',
-              link: link.href
-            });*/
-            // 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
-            doc.image('transparent.png', link.l,link.t, {
-              width: link.w, 
-              height: link.h,
-              link: link.href
-            })
-            doc.stroke();
-            
+            doc.link(link.l, link.t, link.w, link.h, link.href);
           }
         }
-        pageCounter+=1;
+        pageCounter += 1;
         doc.flushPages();
       }
     }

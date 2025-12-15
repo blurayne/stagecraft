@@ -171,3 +171,6 @@ dist
 # IntelliJ based IDEs
 .idea
 .gitignore
+
+# Env Files
+.env*
