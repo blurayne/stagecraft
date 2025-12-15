@@ -2,7 +2,7 @@
 
 ## About
 
-This tool exports a Reveal.js Web Presentation to to a PDF or PPTX using Playwright Chromium. The PPTX can then be used to import to Google Presentatuins – including text overlays ;)
+This tool exports a Reveal.js Web Presentation to to a PDF or PPTX using Playwright Chromium. The PPTX can then be used to import to Google Presentations – including text overlays ;)
 
 I'm not much into [TypeScript](https://www.typescriptlang.org/) and this project was also a little expedition into the ECMA/TypeScript landscape. Honestly, I very much missed *Python Data Classes* or *@attr* and the toolchain gave me not what I'd expect from a dynamic language.
 
@@ -44,7 +44,6 @@ The tool is basically divided into two passes:
 - Create a `stagecraft.json` 
   - with slide notes, link and layout information embedded
   - and  `screenshots-%04d.png` alongside 
-
 
 **Generate PPTX/PDF**
 
