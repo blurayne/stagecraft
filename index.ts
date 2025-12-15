@@ -5,6 +5,7 @@ import PDFDocument  from "pdfkit";
 import format from '@stdlib/string-format'
 const { setImmediate: setImmediatePromise } = require('node:timers/promises');
 import fs from "fs";
+import { Command } from 'commander';
 
 async function sleep(seconds) {
   return new Promise((resolve) =>setTimeout(resolve, seconds * 1000));
@@ -19,7 +20,6 @@ import {unified} from 'unified'
 
 // slide.addNotes('This is my favorite slide!');
 
-
 // let pres = new pptxgen();
 // let slide = pres.addSlide();
 
@@ -28,15 +28,28 @@ class SpeakerNotes {
   html: String | null = null
 }
 
+class PageLink {
+  text: String = ""
+  href: String = ""
+  x: Number = 0
+  y: Number = 0
+  l: Number = 0
+  t: Number = 0
+  w: Number = 0
+  h: Number = 0
+}
+
 class PagePile {
   speakerNotes: SpeakerNotes
   screenshots: String[] = []
+  links:PageLink[] = []
 
   constructor() {
     this.screenshots = []
     this.speakerNotes = new SpeakerNotes();
   }
 }
+
 
 class RevealPager {
 
@@ -49,7 +62,6 @@ class RevealPager {
     this.page = page;
     this.dump = [];
     this.currentPile = this.getClearPile();
-    console.dir(this.getClearPile());
   }
 
   public async convert(html: Compatible) {
@@ -113,6 +125,9 @@ class RevealPager {
       console.info(`Transition took ${transationDuration}s`);
     }
 
+    this.currentPile.links =  await this.page.evaluate(`window.getLinkElements()`);
+    console.dir(this.currentPile.links);
+
     const slideNotesHtml: string = await this.page.evaluate(`Reveal.getSlideNotes()`);
     this.currentPile.speakerNotes.html = slideNotesHtml;
 
@@ -120,7 +135,6 @@ class RevealPager {
     this.currentPile.speakerNotes.markdown = slideNotesMarkdown;
 
     console.info(`Speaker Notes: ${slideNotesMarkdown}`);
-    console.log(JSON.stringify(this.dump));
     return true
   }
 
@@ -133,47 +147,115 @@ class RevealPager {
 
 class TimeoutError extends Error {}
 
+class AppCommander extends Command {
+  
+  public addDefaultOptions() : Command {
+    return this.option('-f, --filename <string>', 'Path to stagecraft file or export directory');
+  }
+}
+
 class App {
 
   dumpFilename: string = 'stagecraft.json'
+  commanderApp: AppCommander
+
+  constructor() {
+    
+    this.commanderApp = new AppCommander();
+    this.commanderApp
+      .name("stagecraft")
+      .description("Screenshot Reveal.js presentation in chromium using playwright and create PPTX or PDF")
+      .version("0.1.0");
+  }
 
   public async main() {
-    // await this.generatePptx();
-    // await this.grabSlides();
-    await this.generatePdf();
-    
+
+    this.commanderApp.command('export')
+      .description('Create stagecraft export')
+      .action((str, options) => {
+        // this.options = options;
+        // console.dir(str, options);
+        // f dumpFilename
+        this.exportSlides();
+        // console.log(str.split(options.separator, limit));
+      });
+
+    this.commanderApp.command('generate-pdf')
+      .description('Generate a PDF from a stagecraft export')
+      .argument('[string]', 'PDF Filename')
+      .option('-f, --filename <string>', 'Path to stagecraft file or export directory')
+      .action(() => {
+        this.generatePdf();
+      });
+
+    this.commanderApp.command('generate-pptx')
+      .description('Generate a PDF from a stagecraft export')
+      .option('-f, --filename <string>', 'Path to stagecraft file or export directory')
+      .action(() => {
+        this.generatePptx();
+      });
+
+    this.commanderApp.parse();
   }
 
   public async generatePptx() {    
     let pres = new pptxgen(); 
-    pres.defineLayout({ name:'layout', width:16, height:9 });
+    pres.defineLayout({ name:'layout', width:1600/100, height:900/100 });
     pres.layout = 'layout'
     
     const pagepiles = this.readDump();
     for (let pagepile of pagepiles) { 
-      let notes = pagepile.speakerNotes.markdown;
+      let notes = (pagepile.speakerNotes.markdown && String(pagepile.speakerNotes.markdown).trim().length) ? pagepile.speakerNotes.markdown.trim() : null;
       for (let filename of pagepile.screenshots) {
-        console.info("Adding ${filename}");
+        console.info(`Adding ${filename}`);
         let slide = pres.addSlide();
         slide.background = { path: filename };  
         // slide.addImage({ path: "screenshot-0001.png", w: '100%', h:'100%' }); 
         if (notes) {
-          slide.addNotes(String(notes));
+          slide.addNotes(notes);
         } else {
           slide.addNotes("\n");
+        }
+        for (let link of pagepile.links) {
+          if (link.l>0 && link.t>0) {
+            console.log(`Adding Link for ${link.text}: ${link.href} (${link.l},${link.t}:${link.w}x${link.h})`);
+            
+            slide.addText("", {
+              w: link.w/100, 
+              h: link.h/100,
+              x: link.l/100,
+              y: link.t/100,
+              hyperlink: {
+                tooltip: link.text,
+                url: link.href
+              },
+              fill: { color: "FF0000", transparency: 100, type: "solid" },
+              shape: pres.ShapeType.rect,
+              // line: { color: "FF0000", width: 1, dashType: "solid" },
+            });
+            // debug: transparency: 50
+            
+          }
         }
       }
     }
     
     // slide.addText('Hello World!', { x:1.5, y:1.5, fontSize:18, color:'363636', transparency: 100  });
+    console.info("Writing file");
     await pres.writeFile({ fileName: "example.pptx" });
     await sleep(1);
+    console.info("Done");
   }
 
 
-  public async generatePdf() {
-    var width = 1600;
-    var height = 900;
+  public async generatePdf(pdfFilename: string) {
+    const width = 1600;
+    const height = 900;
+    if (!pdfFilename) {
+      pdfFilename = 'example.pdf'
+    }
+    let pageCounter = 1;
+
     let pagespec = {
       size: [width,height],
       margins : { 
@@ -190,28 +272,48 @@ class App {
     // doc.info['Author'] = 'Devon Govett';
     // doc.registerFont('Palatino', 'fonts/PalatinoBold.ttf');
 
-    doc.pipe(fs.createWriteStream('example.pdf'));
+    doc.pipe(fs.createWriteStream(pdfFilename));
 
     const pagepiles = this.readDump();
     for (let pagepile of pagepiles) { 
-      let notes = pagepile.speakerNotes.markdown;
+      let notes = (pagepile.speakerNotes.markdown && String(pagepile.speakerNotes.markdown).trim().length) ? pagepile.speakerNotes.markdown.trim() : null;
       for (let filename of pagepile.screenshots) {
-        console.info("Adding ${filename}");
-        doc.image(filename, 0, 0, {width: 1600, height: 900});
-        doc.addPage(pagespec);
-        // slide.addImage({ path: "screenshot-0001.png", w: '100%', h:'100%' }); 
-        /*
-        if (notes) {
-          slide.addNotes(String(notes));
-        } else {
-          slide.addNotes("\n");
+        if (pageCounter>1) {
+          doc.addPage(pagespec);
         }
-        */
+        console.info(`Adding ${filename}`);
+        doc.image(filename, 0, 0, {width: 1600, height: 900});
+        if (notes) {
+          doc.note(width-32, 8, 32, 32, notes)
+        }
+        for (let link of pagepile.links) {
+          if (link.l>0 && link.t>0) {
+            console.log(`Adding Link for ${link.text}: ${link.href} (${link.l},${link.t}:${link.w}x${link.h})`);
+            // doc.rect(link.l,link.t, link.w, link.h, {"link": link.href}).fill('black');
+            /*doc.fillColor('green').text(link.text,link.l,link.t, {
+              width: link.w, 
+              height: link.h,
+              align: 'left',
+              link: link.href
+            });*/
+            // 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+            doc.image('transparent.png', link.l,link.t, {
+              width: link.w, 
+              height: link.h,
+              link: link.href
+            })
+            doc.stroke();
+            
+          }
+        }
+        pageCounter+=1;
+        doc.flushPages();
       }
     }
     // .text('Stretch', 320, 130);
   
     doc.end();
+    console.info(`Writing PDF ${pdfFilename}`);
     await sleep(1);
   }
 
@@ -225,7 +327,7 @@ class App {
     fs.writeFileSync(this.dumpFilename, JSON.stringify(pager.getDump(), null, 2), 'utf8');
   }
 
-  public async grabSlides() {
+  public async exportSlides() {
 
       const browser = await chromium.launch();
       const page = await browser.newPage();
@@ -255,6 +357,28 @@ class App {
     console.info("Reveal.js is ready");
     
     await page.evaluate(`
+    
+      window.getLinkElements = function() {
+        return Array.from(
+          document
+            .querySelectorAll('.slides > .present a'))
+            .filter((elem) => elem.href)
+            .map((elem) => { 
+              let bounds = elem.getBoundingClientRect(); 
+              return {
+                  "text": elem.textContent, 
+                  "href": elem.href,
+                  "x": bounds.x, 
+                  "y": bounds.y, 
+                  "w": bounds.width, 
+                  "h": bounds.height, 
+                  "t": bounds.top + window.scrollY, 
+                  "l": bounds.left + window.scrollX 
+              }
+            }
+        );
+      };
+
       Reveal.on('slidetransitionend', event => {
         window.slideReady = true;
       });

@@ -1,17 +1,39 @@
 # webslides-exporter
 
-To install dependencies:
+## About
+
+Export
+
+- Use Playwright and chromium to open a Reveal.js Presentation (as HTTP URL) 
+- Iterate through slide (by pressing "Space") and make screenshots (save to disk)
+- Create a stagecraft.json with slide notes and screenshots information embeded
+
+Generate PPTX/PDF
+
+- Use stagecraft.json to generate PPTX or PDF
+
+
+## Setup
 
 ```bash
-bun install
+yarn install
 npx playwright install chromium 
-npm install -g ts-node typescript '@types/node'
+npm install -g tsx 
 ```
 
-To run:
+## Usage
+
+For now:
 
 ```bash
-bun run index.ts
+tsx index.ts
 ```
 
-This project was created using `bun init` in bun v1.0.2. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+## TODO
+
+- ( ) Links
+  - ( ) Determine regions of links in HTML (element region)
+  - ( ) Embed regions in stagecraft file
+  - ( ) Make links possible for PDF
+  - ( ) Make links possible for PPTX 
+

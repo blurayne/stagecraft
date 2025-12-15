@@ -11,6 +11,7 @@
   "dependencies": {
     "@stdlib/string-format": "^0.1.1",
     "chromium": "^3.0.3",
+    "commander": "^11.1.0",
     "pdfkit": "^0.14.0",
     "playwright": "latest",
     "playwright-chromium": "^1.39.0",
