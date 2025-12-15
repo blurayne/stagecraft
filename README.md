@@ -113,3 +113,5 @@ Commands:
 TypeError: launch: launch: undefined is not an object (evaluating 'pipeRead.on')
 ```
 
+Please read: [The Jared Wilcurt: Bun hype. How we learned nothing from Yarn](https://dev.to/thejaredwilcurt/bun-hype-how-we-learned-nothing-from-yarn-2n3j) especially the "Bun is actually much worse" section
+
