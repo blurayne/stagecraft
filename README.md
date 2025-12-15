@@ -2,24 +2,45 @@
 
 ## About
 
-This tool is intended to export a Web Presentation from a browser (currently only Reveal.js supported) to a PDF or PPTX which then can be imported to Google Docs. 
+This tool exports a Reveal.js Web Presentation to to a PDF or PPTX using Playwright Chromium. The PPTX can then be used to import to Google Presentatuins – including text overlays ;)
 
-**Features:**
+I'm not much into [TypeScript](https://www.typescriptlang.org/) and this project was also a little expedition into the ECMA/TypeScript landscape. Honestly, I very much missed *Python Data Classes* or *@attr* and the toolchain gave me not what I'd expect from a dynamic language.
+
+## Features
 
 - Adjust Zoom Level
 - Have a 1:1 visual representation by using real screenshots
 - Embed *Slide Notes* and maintain *Links* and as overlay
 - Export as *PDF* or *PPTX*
   
+## Usage
+
+For now `bin/stagecraft`:
+
+```bash
+Usage: stagecraft [options] [command]
+
+Screenshot Reveal.js presentation in chromium using playwright and create PPTX or PDF
+
+Options:
+  -V, --version                    output the version number
+  -h, --help                       display help for command
+
+Commands:
+  export                           Create stagecraft export
+  generate-pdf [options] [string]  Generate a PDF from a stagecraft export
+  generate-pptx [options]          Generate a PPTX from a stagecraft export
+  help [command]                   display help for command
+```
 
 ## How Does it work?
 
-The tool is basically divided in two sections:
+The tool is basically divided into two passes:
 
 **Dump/Export**
 
 - Use Playwright and chromium to open a Reveal.js Presentation (as HTTP URL) 
-- Iterate through slide (by pressing "Space") and make screenshots (save to disk)
+- Iterate through slide (by invoking the "Space" ley) and make screenshots (save to disk)
 - Create a `stagecraft.json` 
   - with slide notes, link and layout information embedded
   - and  `screenshots-%04d.png` alongside 
@@ -27,12 +48,7 @@ The tool is basically divided in two sections:
 
 **Generate PPTX/PDF**
 
-- Use stagecraft.json to generate PPTX or PDF
-
-  
-
-**NOTE:** I'm a beginner with TypeScript still learning from https://www.typescriptlang.org/ while thinking about *Python dataclasses* or `attr` in loving memory and thinking compiling is a much worse experience than in a static language.
-
+- Generate PPTX or PDF from the dumped screenshits and the `stagecraft.json` file.
 
 
 ## Development Environment Setup
@@ -57,30 +73,7 @@ The OCI develpment image is not ready yet, therefore:
    npm install -g tsx
    `````
 
-5. Run app with `tsx index.ts`or `bin/stagecraft`
-
-
-
-## Usage
-
-For now `bin/stagecraft`:
-
-```bash
-Usage: stagecraft [options] [command]
-
-Screenshot Reveal.js presentation in chromium using playwright and create PPTX or PDF
-
-Options:
-  -V, --version                    output the version number
-  -h, --help                       display help for command
-
-Commands:
-  export                           Create stagecraft export
-  generate-pdf [options] [string]  Generate a PDF from a stagecraft export
-  generate-pptx [options]          Generate a PPTX from a stagecraft export
-  help [command]                   display help for command
-```
-
+1. Run app with `tsx index.ts`or `bin/stagecraft`
 
 
 ## TODO

@@ -5,4 +5,4 @@ SCRIPT_PATH="${SCRIPT%/*/*}"
 
 export NODE_PATH="${SCRIPT_PATH}${NODE_PATH+:}${NODE_PATH:-}"
 
-exec tsx -- "${SCRIPT_PATH}/index.ts" "$@"
+exec tsx -- "${SCRIPT_PATH}/app.ts" "$@"
